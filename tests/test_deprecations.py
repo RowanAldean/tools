@@ -29,8 +29,6 @@ DEPRECATED_TOOLS = [
     ("editor", "editor"),
     ("environment", "environment"),
     ("http_request", "http_request"),
-    ("exa", "exa_get_contents"),
-    ("exa", "exa_search"),
     ("journal", "journal"),
     ("memory", "memory"),
     ("retrieve", "retrieve"),

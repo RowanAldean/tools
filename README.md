@@ -43,7 +43,7 @@ Strands Agents Tools is a community-driven project that provides a powerful set 
 - 📁 **File Operations** - Read, write, and edit files with syntax highlighting and intelligent modifications
 - 🖥️ **Shell Integration** - Execute and interact with shell commands securely
 - 🧠 **Memory** - Store user and agent memories across agent runs to provide personalized experiences with both Mem0, Amazon Bedrock Knowledge Bases, Elasticsearch, and MongoDB Atlas
-- 🕸️ **Web Infrastructure** - Perform web searches, extract page content, and crawl websites with Tavily and Exa-powered tools
+- 🕸️ **Web Infrastructure** - Search and extract page content with Parallel; use Tavily for its separate crawl capabilities
 - 🌐 **HTTP Client** - Make API requests with comprehensive authentication support
 - 💬 **Slack Client** - Real-time Slack events, message processing, and Slack API access
 - 🐍 **Python Execution** - Run Python code snippets with state persistence, user confirmation for code execution, and safety features
@@ -114,10 +114,11 @@ Below is a comprehensive table of all available tools, how to use them with an a
 | shell* ⚠️ | `agent.tool.shell(command="ls -la")` | Executing shell commands, interacting with the operating system, running scripts <br> **Deprecated — see [Deprecations](#deprecations)** |
 | http_request ⚠️ | `agent.tool.http_request(method="GET", url="https://api.example.com/data")` | Making API calls, fetching web data, sending data to external services <br> **Deprecated — see [Deprecations](#deprecations)** |
 | tavily_search ⚠️ | `agent.tool.tavily_search(query="What is artificial intelligence?", search_depth="advanced")` | Real-time web search optimized for AI agents with a variety of custom parameters <br> **Deprecated — see [Deprecations](#deprecations)** |
+| parallel_search | `agent.tool.parallel_search(objective="Find current Strands docs", search_queries=["Strands SDK documentation", "Strands harness quickstart", "Strands agent tools"], session_id="conversation-one")` | Parallel Fast web search with ranked sources and excerpts |
+| parallel_extract | `agent.tool.parallel_extract(urls=["https://strandsagents.com/"], session_id="conversation-one")` | Page excerpts or full markdown from known public URLs |
 | tavily_extract ⚠️ | `agent.tool.tavily_extract(urls=["www.tavily.com"], extract_depth="advanced")` | Extract clean, structured content from web pages with advanced processing and noise removal <br> **Deprecated — see [Deprecations](#deprecations)** |
 | tavily_crawl ⚠️ | `agent.tool.tavily_crawl(url="www.tavily.com", max_depth=2, instructions="Find API docs")` | Crawl websites intelligently starting from a base URL with filtering and extraction <br> **Deprecated — see [Deprecations](#deprecations)** |
 | tavily_map ⚠️ | `agent.tool.tavily_map(url="www.tavily.com", max_depth=2, instructions="Find all pages")` | Map website structure and discover URLs starting from a base URL without content extraction <br> **Deprecated — see [Deprecations](#deprecations)** |
-| exa_search ⚠️ | `agent.tool.exa_search(query="Best project management tools", text=True)` | Intelligent web search with auto mode (default) for optimal results, plus fast and deep search modes <br> **Deprecated — see [Deprecations](#deprecations)** |
 | exa_get_contents ⚠️ | `agent.tool.exa_get_contents(urls=["https://example.com/article"], text=True, summary={"query": "key points"})` | Extract full content and summaries from specific URLs with live crawling fallback <br> **Deprecated — see [Deprecations](#deprecations)** |
 | python_repl* | `agent.tool.python_repl(code="import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())")` | Running Python code snippets, data analysis, executing complex logic with user confirmation for security |
 | calculator ⚠️ | `agent.tool.calculator(expression="2 * sin(pi/4) + log(e**2)")` | Performing mathematical operations, symbolic math, equation solving <br> **Deprecated — see [Deprecations](#deprecations)** |
@@ -210,7 +211,6 @@ is why the log message exists as well.
 | `diagram` | no replacement — have the model write graphviz/mermaid/`diagrams` code directly | v0.8.6 | v0.9.0 |
 | `rss` | no replacement — parse feeds directly with `feedparser` | v0.8.6 | v0.9.0 |
 | `tavily` (`tavily_search`, `tavily_extract`, `tavily_crawl`, `tavily_map`) | [official Tavily MCP server](https://docs.tavily.com/documentation/mcp) | v0.8.9 | v0.9.0 |
-| `exa` (`exa_search`, `exa_get_contents`) | [official Exa MCP server](https://exa.ai/docs/reference/exa-mcp) | v0.8.9 | v0.9.0 |
 | `search_video` | [official TwelveLabs MCP servers](https://docs.twelvelabs.io/docs/advanced/model-context-protocol) | v0.8.9 | v0.9.0 |
 | `chat_video` | [official TwelveLabs MCP servers](https://docs.twelvelabs.io/docs/advanced/model-context-protocol) | v0.8.9 | v0.9.0 |
 | `journal` | `from strands.vended_tools import notebook` | v0.8.9 | v0.9.0 |
@@ -301,10 +301,10 @@ The replacements are not drop-in equivalents. Check these before migrating:
 - **`tavily` → Tavily MCP server** — Auth moves from `TAVILY_API_KEY` to OAuth, a key in the server URL, or a header. A handful of parameters have no MCP equivalent:
   `auto_parameters`, `chunks_per_source`, `days`, `include_answer`, `categories`, `exclude_paths`,
   and the `"markdown"/"text"` literals for `include_raw_content` (the MCP accepts a boolean only). If you need these parameters, call the [Tavily REST API](https://docs.tavily.com/documentation/api-reference/introduction) directly.
-- **`exa` → Exa MCP server** — the MCP renames the tools: `exa_search` becomes `web_search_exa` and
-  `exa_get_contents` becomes `web_fetch_exa`. For the full parameter surface of `exa_search`, opt in
-  to `web_search_advanced_exa` via the `tools` URL parameter. Auth moves from `EXA_API_KEY` to OAuth, a key in
-  the server URL, or a header.
+- **Web search and extraction** — use `parallel_search` and `parallel_extract` from
+  `strands_tools.parallel`. They connect to Parallel Search MCP without an API key for light use.
+  `PARALLEL_API_KEY` enables higher limits. See [the migration notes](docs/parallel-migration.md).
+
 - **`search_video` / `chat_video` → TwelveLabs MCP servers** — Jockey adds cross-video reasoning, while single-video search and analysis continue
   at `mcp-alpic.twelvelabs.io`. Jockey requires publicly accessible URLs and has no equivalent for `chat_video`'s local-file upload nor
   `search_video`'s `group_by`, `threshold`, and `search_options` parameters.
@@ -484,70 +484,20 @@ result = agent.tool.tavily_map(url="www.tavily.com")
 
 ```
 
-### Exa Search and Contents
+### Parallel web search and extraction
 
 ```python
 from strands import Agent
-from strands_tools.exa import exa_search, exa_get_contents
+from strands_tools.parallel import parallel_search, parallel_extract
 
-agent = Agent(tools=[exa_search, exa_get_contents])
-
-# Basic search (auto mode is default and recommended)
-result = agent.tool.exa_search(
-    query="Best project management software",
-    text=True
-)
-
-# Company-specific search when needed
-result = agent.tool.exa_search(
-    query="Anthropic AI safety research",
-    category="company",
-    include_domains=["anthropic.com"],
-    num_results=5,
-    summary={"query": "key research areas and findings"}
-)
-
-# News search with date filtering
-result = agent.tool.exa_search(
-    query="AI regulation policy updates",
-    category="news",
-    start_published_date="2024-01-01T00:00:00.000Z",
-    text=True
-)
-
-# Get detailed content from specific URLs
-result = agent.tool.exa_get_contents(
-    urls=[
-        "https://example.com/blog-post",
-        "https://github.com/microsoft/semantic-kernel"
-    ],
-    text={"maxCharacters": 5000, "includeHtmlTags": False},
-    summary={
-        "query": "main points and practical applications"
-    },
-    subpages=2,
-    extras={"links": 5, "imageLinks": 2}
-)
-
-# Structured summary with JSON schema
-result = agent.tool.exa_get_contents(
-    urls=["https://example.com/article"],
-    summary={
-        "query": "main findings and recommendations",
-        "schema": {
-            "type": "object",
-            "properties": {
-                "main_points": {"type": "string", "description": "Key points from the article"},
-                "recommendations": {"type": "string", "description": "Suggested actions or advice"},
-                "conclusion": {"type": "string", "description": "Overall conclusion"},
-                "relevance": {"type": "string", "description": "Why this matters"}
-            },
-            "required": ["main_points", "conclusion"]
-        }
-    }
-)
-
+agent = Agent(tools=[parallel_search, parallel_extract])
+agent("Research current Strands releases. Use one stable session ID for search and extraction.")
 ```
+
+Parallel Fast is the default search mode. No API key is needed for light use.
+Set `PARALLEL_API_KEY` for higher limits. Search returns ranked URLs and excerpts;
+extraction returns excerpts or full markdown, including per-URL errors when present.
+
 
 ### Python Code Execution
 
@@ -1226,12 +1176,11 @@ These variables affect multiple tools:
 | TAVILY_API_KEY | Tavily API key (required for all Tavily functionality) | None |
 - Visit https://www.tavily.com/ to create a free account and API key.
 
-#### Exa Search and Contents Tools
+#### Parallel tools
 
-| Environment Variable | Description | Default |
-|----------------------|-------------|---------|
-| EXA_API_KEY | Exa API key (required for all Exa functionality) | None |
-- Visit https://dashboard.exa.ai/api-keys to create a free account and API key.
+`PARALLEL_API_KEY` is optional. The hosted MCP supports free, rate-limited access;
+a key authenticates requests with a Bearer token for higher limits.
+
 
 #### Mem0 Memory Tool
 
